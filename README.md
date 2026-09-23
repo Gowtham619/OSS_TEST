@@ -1,6 +1,6 @@
 # terraform-complaints-rag-platform
 
-Full, deployable-from-nothing stack for the Complaints RAG Platform's
+Full, deployable-from-nothing stack for the RAG Platform's
 Vector Store layer (Layer 3) and its immediate dependencies: networking
 and the IAM roles Layers 2 and 4 need to reach it.
 
