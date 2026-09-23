@@ -1,0 +1,27 @@
+# Copy to terraform.tfvars and adjust before running.
+
+region      = "eu-west-1"
+name_prefix = "complaints-rag"
+environment = "dev"
+
+vpc_cidr           = "10.20.0.0/16"
+az_count           = 3
+single_nat_gateway = true # set false for prod (resilient, ~3x NAT cost)
+
+# "serverless" | "cluster" | "both"
+vector_store_type = "both"
+
+# Only set true on your very first VPC-based OpenSearch domain in this
+# account/region (only used if vector_store_type includes "cluster").
+create_opensearch_service_linked_role = false
+
+# Lock this down to real IAM users/roles before anything beyond a dev spike —
+# it currently defaults to account root if left empty.
+admin_principal_arns = [
+  # "arn:aws:iam::123456789012:user/your-username",
+]
+
+tags = {
+  Programme  = "complaints-technology"
+  CostCentre = "regulatory-ops"
+}
