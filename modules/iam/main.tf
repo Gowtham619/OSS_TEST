@@ -120,3 +120,33 @@ resource "aws_iam_role_policy_attachment" "admin_bedrock" {
   role       = aws_iam_role.admin.name
   policy_arn = aws_iam_policy.bedrock_invoke.arn
 }
+
+##############################################
+# Lets the embedding/retrieval Lambda roles assume the admin role — needed
+# once, to bootstrap the OpenSearch cluster domain's internal Security
+# plugin role-mapping (an IAM access policy alone does not grant any
+# in-domain privileges; only the master user, i.e. this admin role, can
+# grant other identities permissions inside OpenSearch itself).
+##############################################
+data "aws_iam_policy_document" "assume_admin" {
+  statement {
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [aws_iam_role.admin.arn]
+  }
+}
+
+resource "aws_iam_policy" "assume_admin" {
+  name   = "${local.name}-assume-admin"
+  policy = data.aws_iam_policy_document.assume_admin.json
+}
+
+resource "aws_iam_role_policy_attachment" "embedding_assume_admin" {
+  role       = aws_iam_role.embedding_lambda.name
+  policy_arn = aws_iam_policy.assume_admin.arn
+}
+
+resource "aws_iam_role_policy_attachment" "retrieval_assume_admin" {
+  role       = aws_iam_role.retrieval_lambda.name
+  policy_arn = aws_iam_policy.assume_admin.arn
+}
