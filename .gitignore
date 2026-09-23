@@ -8,3 +8,4 @@ tfplan
 terraform.tfvars
 *.DS_Store
 =
+response.json

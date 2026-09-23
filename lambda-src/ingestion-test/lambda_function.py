@@ -102,10 +102,59 @@ def test_store(endpoint: str, service: str, index_name: str, embedding: list, cr
     return results
 
 
+def knn_search(endpoint: str, service: str, index_name: str, query_embedding: list, creds, k: int = 5) -> dict:
+    """
+    Real RAG retrieval query: finds the k complaints whose embeddings are
+    closest to query_embedding. This is what a retrieval Lambda would call
+    with the embedding of an incoming user question.
+    """
+    auth = AWS4Auth(
+        creds.access_key, creds.secret_key, REGION, service,
+        session_token=creds.token,
+    )
+    body = {
+        "size": k,
+        "query": {
+            "knn": {
+                "embedding": {
+                    "vector": query_embedding,
+                    "k": k,
+                }
+            }
+        },
+        "_source": ["text"],  # skip returning the big embedding array
+    }
+    r = requests.post(
+        f"{endpoint}/{index_name}/_search", auth=auth,
+        headers={"Content-Type": "application/json"},
+        data=json.dumps(body), timeout=20,
+    )
+    return {"status": r.status_code, "body": r.text[:1000]}
+
+
 def handler(event, context):
     session = boto3.Session()
     creds = session.get_credentials().get_frozen_credentials()
 
+    # Query mode: invoke with {"query_text": "your question here"} to run
+    # a real k-NN similarity search instead of the ingestion self-test.
+    query_text = (event or {}).get("query_text")
+    if query_text:
+        query_embedding = get_embedding(query_text)
+        output = {"query_text": query_text, "embedding_dimensions": len(query_embedding)}
+
+        aoss_endpoint = os.environ.get("AOSS_ENDPOINT")
+        if aoss_endpoint:
+            output["aoss"] = knn_search(aoss_endpoint, "aoss", "test-complaints", query_embedding, creds)
+
+        cluster_endpoint = os.environ.get("CLUSTER_ENDPOINT")
+        if cluster_endpoint:
+            output["cluster"] = knn_search(cluster_endpoint, "es", "test-complaints", query_embedding, creds)
+
+        return output
+
+    # Default mode: the original ingestion self-test (create index, write
+    # a doc, match_all search) — unchanged from before.
     embedding = get_embedding(TEST_COMPLAINT)
     output = {"embedding_dimensions": len(embedding)}
 
