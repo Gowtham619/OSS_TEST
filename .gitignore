@@ -5,6 +5,7 @@ terraform.tfstate
 terraform.tfstate.backup
 tfplan
 .build/
+.claude/
 terraform.tfvars
 *.DS_Store
 =
